@@ -1,2 +1,3 @@
 [deps]
+KrylovKit = "0b1a1467-8014-51b9-945f-bf0ae24f4b77"
 TeNe = "40aa279b-ad7f-4677-b48f-8ada8287f320"

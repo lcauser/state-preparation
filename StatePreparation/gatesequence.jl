@@ -1,9 +1,11 @@
 using TeNe 
+import TeNe: add!
 
 mutable struct GateSequence
     gate::TeNe.CircuitGate
     gatelist::Vector{TeNe.CircuitGate}
     qubits::Vector{Int}
+    ends::Vector{Int}
 end
 
 """
@@ -12,8 +14,12 @@ end
 Create a gate sequence that will be contracted with the given `gate`.
 """
 function GateSequence(gate::TeNe.CircuitGate)
-    return GateSequence(adjoint(gate), [], [])
+    return GateSequence(adjoint(gate), [], [], fill(0, length(gate)))
 end
+function GateSequence(gate::TeNe.CircuitGate, zeros::Int...)
+    return GateSequence(adjoint(gate), [], [], Vector(map(j->(j in zeros) ? 1 : 0, Base.OneTo(length(gate)))))
+end
+
 
 
 """
@@ -47,17 +53,24 @@ function project(gates::GateSequence, which::Int)
         gate = _contract_after(gate, gates, i)
     end
 
+    # Projections before 
+    for i = Base.OneTo(length(gates.gate))
+        if gates.ends[i] != 0
+            gate = _project_before(gate, i, gates.ends[i])
+        end
+    end
+
     # Contract the gate which appear after the specified gate 
     for i = reverse(Base.range(which+1, length(gates.gatelist)))
         gate = _contract_before(gate, gates, i)
     end
 
-    # Trace out indices 
-    for _ = Base.OneTo(gates.qubits[which]-1)
+    # Trace out the ends 
+    for i = Base.OneTo(gates.qubits[which]-1)
         gate = trace(gate, 1, 2)
     end
     offset = 2*length(gates.gatelist[which])
-    for _ = Base.range(gates.qubits[which]+length(gates.gatelist[which]), length(gates.gate))
+    for i = Base.range(gates.qubits[which]+length(gates.gatelist[which]), length(gates.gate))
         gate = trace(gate, offset+1, offset+2)
     end
 
@@ -78,10 +91,19 @@ function overlap(gates::GateSequence)
         gate = _contract_after(gate, gates, i)
     end
 
-    for _ = Base.OneTo(length(gates.gate))
-        gate = trace(gate, 1, 2)
+    # Trace out the ends
+    for i = Base.OneTo(length(gates.gate))
+        if gates.ends[i] == 0
+            gate = trace(gate, 1, 2)
+        else
+            gate = gate[
+                gates.ends[i], gates.ends[i],
+                map(j->Base.range(Base.firstindex(gate, j), Base.lastindex(gate, j)),
+                    Base.range(3, ndims(gate)))...
+            ]
+        end
     end
-    return gate[]
+    return gate[] / 2^(sum(gates.ends .== 0))
 end
 
 function _contract_after(gate, gates, i)
@@ -124,6 +146,14 @@ function _contract_before(gate, gates, i)
         gate = permutedim(gate, j, 2*(first_qubit-1+j)-1)
     end
 
+    return gate
+end
+
+function _project_before(gate, i, val)
+    ten = zeros(eltype(gate), size(gate, 2*i-1), size(gate, 2*i-1))
+    ten[val, val] = 1
+    gate = contract(gate, ten, 2*i-1, 1)
+    gate = permutedim(gate, ndims(gate), 2*i-1)
     return gate
 end
 

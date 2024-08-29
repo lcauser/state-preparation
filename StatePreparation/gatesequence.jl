@@ -17,7 +17,7 @@ function GateSequence(gate::TeNe.CircuitGate)
     return GateSequence(adjoint(gate), [], [], fill(0, length(gate)))
 end
 function GateSequence(gate::TeNe.CircuitGate, zeros::Int...)
-    return GateSequence(adjoint(gate), [], [], Vector(map(j->(j in zeros) ? 1 : 0, Base.OneTo(length(gate)))))
+    return GateSequence(adjoint(gate), [], [], Vector(map(j->(j in zeros) ? 2 : 0, Base.OneTo(length(gate)))))
 end
 
 
@@ -66,11 +66,11 @@ function project(gates::GateSequence, which::Int)
     end
 
     # Trace out the ends 
-    for i = Base.OneTo(gates.qubits[which]-1)
+    for _ = Base.OneTo(gates.qubits[which]-1)
         gate = trace(gate, 1, 2)
     end
     offset = 2*length(gates.gatelist[which])
-    for i = Base.range(gates.qubits[which]+length(gates.gatelist[which]), length(gates.gate))
+    for _ = Base.range(gates.qubits[which]+length(gates.gatelist[which]), length(gates.gate))
         gate = trace(gate, offset+1, offset+2)
     end
 

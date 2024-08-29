@@ -1,15 +1,14 @@
 using TeNe
-include("../StatePreparation/variational_staircase.jl")
 include("../StatePreparation/gatesequence.jl")
 
 ## TFIM Parameters 
-N = 30
+N = 24
 d = 2
 J = 0.4
 
 # MPS/Circuit paramters 
 D = 8
-sub_layers = 3
+sub_layers = 2
 
 ### Find the ground state to the Ising model using DMRG as an MPS 
 H = OpList(Qubits(), N)
@@ -42,14 +41,14 @@ for i = Base.OneTo(length(gates.layers))
 
     # Create subgates 
     if i == 1
-        sub_gates = GateSequence(g, Tuple(1:length(g))...); # Each qubit meets a zero state 
+        sub_gates = GateSequence(g, Tuple(1:m)...); # Each qubit meets a zero state 
     else
-        sub_gates = GateSequence(g, length(g)) # Only the final qubit meets a zero state
+        sub_gates = GateSequence(g, m) # Only the final qubit meets a zero state
     end
 
     # Add the gauge
     if i != length(gates.layers)
-        add!(sub_gates, TeNe._unitary_close_to_id(d, length(g)-1), 2)
+        add!(sub_gates, TeNe._unitary_close_to_id(d, m-1), 2)
     end
 
     # Add 2-body gates 
